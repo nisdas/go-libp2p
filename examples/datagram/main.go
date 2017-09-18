@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	peer "github.com/libp2p/go-libp2p-peer"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	udpt "github.com/libp2p/go-udp-transport"
 	ma "github.com/multiformats/go-multiaddr"
@@ -25,7 +26,16 @@ func main() {
 		fatal(err)
 	}
 
-	s := swarm.NewBlankSwarm(context.Background(), "Qmbob", nil, nil)
+	QmAlice, err := peer.IDFromString("QmAlice")
+	if err != nil {
+		fatal(err)
+	}
+	QmBob, err := peer.IDFromString("QmBob")
+	if err != nil {
+		fatal(err)
+	}
+
+	s := swarm.NewBlankSwarm(context.Background(), QmAlice, nil, nil)
 	s.AddPacketTransport(udpt.NewUDPTransport())
 
 	// Add an address to start listening on
@@ -35,17 +45,17 @@ func main() {
 	}
 
 	// Conn as argument, for WriteMsg()?
-	s.SetMsgHandler(func(msg []byte, peerid string) {
-		fmt.Printf("got message from %s: %s\n", peerid, string(msg))
+	s.SetMsgHandler(func(msg []byte, p peer.ID) {
+		fmt.Printf("got message from %s: %s\n", p, string(msg))
 
-		_, err = s.WriteMsg(msg, peerid)
+		_, err = s.WriteMsg(msg, p)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 	})
 
-	s.WriteMsg("hey bob", "Qmbob")
+	s.WriteMsg("hey bob", QmBob)
 
 	// Wait forever
 	<-make(chan bool)

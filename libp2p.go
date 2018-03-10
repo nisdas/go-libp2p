@@ -2,47 +2,60 @@ package libp2p
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
+	"net"
 
+	config "github.com/libp2p/go-libp2p/config"
+	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
+
+	circuit "github.com/libp2p/go-libp2p-circuit"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
+	ifconnmgr "github.com/libp2p/go-libp2p-interface-connmgr"
 	pnet "github.com/libp2p/go-libp2p-interface-pnet"
 	metrics "github.com/libp2p/go-libp2p-metrics"
-	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
-	swarm "github.com/libp2p/go-libp2p-swarm"
-	transport "github.com/libp2p/go-libp2p-transport"
-	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	mux "github.com/libp2p/go-stream-muxer"
+	secio "github.com/libp2p/go-libp2p-secio"
+	filter "github.com/libp2p/go-maddr-filter"
+	tcp "github.com/libp2p/go-tcp-transport"
+	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	mplex "github.com/whyrusleeping/go-smux-multiplex"
-	msmux "github.com/whyrusleeping/go-smux-multistream"
 	yamux "github.com/whyrusleeping/go-smux-yamux"
 )
 
 // Config describes a set of settings for a libp2p node
-type Config struct {
-	Transports   []transport.Transport
-	Muxer        mux.Transport
-	ListenAddrs  []ma.Multiaddr
-	PeerKey      crypto.PrivKey
-	Peerstore    pstore.Peerstore
-	Protector    pnet.Protector
-	Reporter     metrics.Reporter
-	DisableSecio bool
-	EnableNAT    bool
-}
+type Config = config.Config
 
-type Option func(cfg *Config) error
+// Option is a libp2p config option that can be given to the libp2p constructor
+// (`libp2p.New`).
+type Option = config.Option
 
-func Transports(tpts ...transport.Transport) Option {
+// ChainOptions chains multiple options into a single option.
+func ChainOptions(opts ...Option) Option {
 	return func(cfg *Config) error {
-		cfg.Transports = append(cfg.Transports, tpts...)
+		for _, opt := range opts {
+			if err := opt(cfg); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
 
+// New constructs a new libp2p node with the given options.
+//
+// Canceling the passed context will stop the returned libp2p node.
+func New(ctx context.Context, opts ...Option) (host.Host, error) {
+	var cfg Config
+	if err := cfg.Apply(opts...); err != nil {
+		return nil, err
+	}
+	return cfg.NewNode(ctx)
+}
+
+// ListenAddrStrings configures libp2p to listen on the given (unparsed)
+// addresses.
 func ListenAddrStrings(s ...string) Option {
 	return func(cfg *Config) error {
 		for _, addrstr := range s {
@@ -56,6 +69,7 @@ func ListenAddrStrings(s ...string) Option {
 	}
 }
 
+// ListenAddrs configures libp2p to listen on the given addresses.
 func ListenAddrs(addrs ...ma.Multiaddr) Option {
 	return func(cfg *Config) error {
 		cfg.ListenAddrs = append(cfg.ListenAddrs, addrs...)
@@ -63,54 +77,119 @@ func ListenAddrs(addrs ...ma.Multiaddr) Option {
 	}
 }
 
-type transportEncOpt int
+// DefaultSecurity is the default security option.
+//
+// Useful when you want to extend, but not replace, the supported transport
+// security protocols.
+var DefaultSecurity = Security(secio.ID, secio.New)
 
-const (
-	EncPlaintext = transportEncOpt(0)
-	EncSecio     = transportEncOpt(1)
+// NoSecurity is an option that completely disables all transport security.
+// It's incompatible with all other transport security protocols.
+var NoSecurity Option = func(cfg *Config) error {
+	if len(cfg.SecurityTransports) > 0 {
+		return fmt.Errorf("cannot use security transports with an insecure libp2p configuration")
+	}
+	cfg.Insecure = true
+	return nil
+}
+
+// Security configures libp2p to use the given security transport (or transport
+// constructor).
+//
+// Name is the protocol name.
+//
+// The transport can be a constructed security.Transport or a function taking
+// any subset of this libp2p node's:
+// * Public key
+// * Private key
+// * Peer ID
+// * Host
+// * Network
+// * Peerstore
+func Security(name string, tpt interface{}) Option {
+	stpt, err := config.SecurityConstructor(tpt)
+	err = traceError(err, 1)
+	return func(cfg *Config) error {
+		if err != nil {
+			return err
+		}
+		if cfg.Insecure {
+			return fmt.Errorf("cannot use security transports with an insecure libp2p configuration")
+		}
+		cfg.SecurityTransports = append(cfg.SecurityTransports, config.MsSecC{SecC: stpt, ID: name})
+		return nil
+	}
+}
+
+// DefaultMuxer configures libp2p to use the stream connection multiplexers.
+//
+// Use this option when you want to *extend* the set of multiplexers used by
+// libp2p instead of replacing them.
+var DefaultMuxer = ChainOptions(
+	Muxer("/yamux/1.0.0", yamux.DefaultTransport),
+	Muxer("/mplex/6.3.0", mplex.DefaultTransport),
 )
 
-func TransportEncryption(tenc ...transportEncOpt) Option {
+// Muxer configures libp2p to use the given stream multiplexer (or stream
+// multiplexer constructor).
+//
+// Name is the protocol name.
+//
+// The transport can be a constructed mux.Transport or a function taking any
+// subset of this libp2p node's:
+// * Peer ID
+// * Host
+// * Network
+// * Peerstore
+func Muxer(name string, tpt interface{}) Option {
+	mtpt, err := config.MuxerConstructor(tpt)
+	err = traceError(err, 1)
 	return func(cfg *Config) error {
-		if len(tenc) != 1 {
-			return fmt.Errorf("can only specify a single transport encryption option right now")
+		if err != nil {
+			return err
 		}
-
-		// TODO: actually make this pluggable, otherwise tls will get tricky
-		switch tenc[0] {
-		case EncPlaintext:
-			cfg.DisableSecio = true
-		case EncSecio:
-			// noop
-		default:
-			return fmt.Errorf("unrecognized transport encryption option: %d", tenc[0])
-		}
+		cfg.Muxers = append(cfg.Muxers, config.MsMuxC{MuxC: mtpt, ID: name})
 		return nil
 	}
 }
 
-func NoEncryption() Option {
-	return TransportEncryption(EncPlaintext)
-}
-
-func NATPortMap() Option {
+// Transport configures libp2p to use the given transport (or transport
+// constructor).
+//
+// The transport can be a constructed transport.Transport or a function taking
+// any subset of this libp2p node's:
+// * Transport Upgrader (*tptu.Upgrader)
+// * Host
+// * Stream muxer (muxer.Transport)
+// * Security transport (security.Transport)
+// * Private network protector (pnet.Protector)
+// * Peer ID
+// * Private Key
+// * Public Key
+// * Address filter (filter.Filter)
+// * Peerstore
+func Transport(tpt interface{}) Option {
+	tptc, err := config.TransportConstructor(tpt)
+	err = traceError(err, 1)
 	return func(cfg *Config) error {
-		cfg.EnableNAT = true
-		return nil
-	}
-}
-
-func Muxer(m mux.Transport) Option {
-	return func(cfg *Config) error {
-		if cfg.Muxer != nil {
-			return fmt.Errorf("cannot specify multiple muxer options")
+		if err != nil {
+			return err
 		}
-
-		cfg.Muxer = m
+		cfg.Transports = append(cfg.Transports, tptc)
 		return nil
 	}
 }
 
+// DefaultTransports are the default libp2p transports.
+//
+// Use this option when you want to *extend* the set of multiplexers used by
+// libp2p instead of replacing them.
+var DefaultTransports = ChainOptions(
+	Transport(tcp.NewTCPTransport),
+	Transport(ws.New),
+)
+
+// Peerstore configures libp2p to use the given peerstore.
 func Peerstore(ps pstore.Peerstore) Option {
 	return func(cfg *Config) error {
 		if cfg.Peerstore != nil {
@@ -122,6 +201,7 @@ func Peerstore(ps pstore.Peerstore) Option {
 	}
 }
 
+// PrivateNetwork configures libp2p to use the given private network protector.
 func PrivateNetwork(prot pnet.Protector) Option {
 	return func(cfg *Config) error {
 		if cfg.Protector != nil {
@@ -133,6 +213,7 @@ func PrivateNetwork(prot pnet.Protector) Option {
 	}
 }
 
+// BandwidthReporter configures libp2p to use the given bandwidth reporter.
 func BandwidthReporter(rep metrics.Reporter) Option {
 	return func(cfg *Config) error {
 		if cfg.Reporter != nil {
@@ -144,6 +225,7 @@ func BandwidthReporter(rep metrics.Reporter) Option {
 	}
 }
 
+// Identity configures libp2p to use the given private key to identify itself.
 func Identity(sk crypto.PrivKey) Option {
 	return func(cfg *Config) error {
 		if cfg.PeerKey != nil {
@@ -155,87 +237,65 @@ func Identity(sk crypto.PrivKey) Option {
 	}
 }
 
-func New(ctx context.Context, opts ...Option) (host.Host, error) {
-	var cfg Config
-	for _, opt := range opts {
-		if err := opt(&cfg); err != nil {
-			return nil, err
+// ConnectionManager configures libp2p to use the given connection manager.
+func ConnectionManager(connman ifconnmgr.ConnManager) Option {
+	return func(cfg *Config) error {
+		if cfg.ConnManager != nil {
+			return fmt.Errorf("cannot specify multiple connection managers")
 		}
+		cfg.ConnManager = connman
+		return nil
 	}
-
-	return newWithCfg(ctx, &cfg)
 }
 
-func newWithCfg(ctx context.Context, cfg *Config) (host.Host, error) {
-	// If no key was given, generate a random 2048 bit RSA key
-	if cfg.PeerKey == nil {
-		priv, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
-		if err != nil {
-			return nil, err
+// AddrsFactory configures libp2p to use the given address factory.
+func AddrsFactory(factory config.AddrsFactory) Option {
+	return func(cfg *Config) error {
+		if cfg.AddrsFactory != nil {
+			return fmt.Errorf("cannot specify multiple address factories")
 		}
-		cfg.PeerKey = priv
+		cfg.AddrsFactory = factory
+		return nil
 	}
-
-	// Obtain Peer ID from public key
-	pid, err := peer.IDFromPublicKey(cfg.PeerKey.GetPublic())
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a new blank peerstore if none was passed in
-	ps := cfg.Peerstore
-	if ps == nil {
-		ps = pstore.NewPeerstore()
-	}
-
-	// Set default muxer if none was passed in
-	muxer := cfg.Muxer
-	if muxer == nil {
-		muxer = DefaultMuxer()
-	}
-
-	// If secio is disabled, don't add our private key to the peerstore
-	if !cfg.DisableSecio {
-		ps.AddPrivKey(pid, cfg.PeerKey)
-		ps.AddPubKey(pid, cfg.PeerKey.GetPublic())
-	}
-
-	swrm, err := swarm.NewSwarmWithProtector(ctx, cfg.ListenAddrs, pid, ps, cfg.Protector, muxer, cfg.Reporter)
-	if err != nil {
-		return nil, err
-	}
-
-	netw := (*swarm.Network)(swrm)
-
-	hostOpts := &bhost.HostOpts{}
-
-	if cfg.EnableNAT {
-		hostOpts.NATManager = bhost.NewNATManager(netw)
-	}
-
-	return bhost.NewHost(ctx, netw, hostOpts)
 }
 
-func DefaultMuxer() mux.Transport {
-	// Set up stream multiplexer
-	tpt := msmux.NewBlankTransport()
-
-	// By default, support yamux and multiplex
-	tpt.AddTransport("/yamux/1.0.0", yamux.DefaultTransport)
-	tpt.AddTransport("/mplex/6.3.0", mplex.DefaultTransport)
-
-	return tpt
+// EnableRelay configures libp2p to enable the relay transport.
+func EnableRelay(options ...circuit.RelayOpt) Option {
+	return func(cfg *Config) error {
+		cfg.Relay = true
+		cfg.RelayOpts = options
+		return nil
+	}
 }
 
-func Defaults(cfg *Config) error {
-	// Create a multiaddress that listens on a random port on all interfaces
-	addr, err := ma.NewMultiaddr("/ip4/0.0.0.0/tcp/0")
-	if err != nil {
-		return err
+// FilterAddresses configures libp2p to never dial nor accept connections from
+// the given addresses.
+func FilterAddresses(addrs ...*net.IPNet) Option {
+	return func(cfg *Config) error {
+		if cfg.Filters == nil {
+			cfg.Filters = filter.NewFilters()
+		}
+		for _, addr := range addrs {
+			cfg.Filters.AddDialFilter(addr)
+		}
+		return nil
 	}
+}
 
-	cfg.ListenAddrs = []ma.Multiaddr{addr}
-	cfg.Peerstore = pstore.NewPeerstore()
-	cfg.Muxer = DefaultMuxer()
-	return nil
+// NATPortMap configures libp2p to use the default NATManager. The default
+// NATManager will attempt to open a port in your network's firewall using UPnP.
+func NATPortMap() Option {
+	return NATManager(bhost.NewNATManager)
+}
+
+// NATManager will configure libp2p to use the requested NATManager. This
+// function should be passed a NATManager *constructor* that takes a libp2p Network.
+func NATManager(nm config.NATManagerC) Option {
+	return func(cfg *Config) error {
+		if cfg.NATManager != nil {
+			return fmt.Errorf("cannot specify multiple NATManagers")
+		}
+		cfg.NATManager = nm
+		return nil
+	}
 }

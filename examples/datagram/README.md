@@ -5,51 +5,25 @@ I'm using it to test out interfaces and conventions, and also to produce working
 
 For now it's going to be the simplest possible echo server/client.
 
-## Additions
 
-package p2phost
-type MsgHandler func(peer.ID, protocol.ID, []byte)
-type Host interface {
-  MsgMux() *msmux.MultigramMuxer
-  SetMsgHandler(protocol.ID, inet.MsgHandler)
-  SetMsgHandlerMatch(protocol.ID, func(string) bool, MsgHandler)
-  RemoveMsgHandler(protocol.ID)
-  WriteMsg(context.Context, peer.ID, ...protocol.ID, []byte)
-}
+## things to check for streams vs. packets
 
-package p2pswarm
-type MsgHandler func(peer.ID, []byte)
-func (s *Swarm) AddPacketTransport(p2ptransport.PacketTransport) {}
-func (s *Swarm) SetMsgHandler(MsgHandler) {}
-func (s *Swarm) MsgHandler() MsgHandler {}
+- dialsync/dialbackoff
+- dialer
+- filters
+- transports
+- bwc
+- protector
+- addrutil.FilterUsableAddrs
 
-package p2piconn
-type PacketConn interface {}
 
-package p2pnet
+## things that we've touched so far
 
-package p2pstream
-func NoOpMsgHandler(msg []byte, peeridOrConn) {}
-
-package p2ptransport
-
-package udptransport
-
-package manet
-
-## TODO
-
-- [ ] go-multiaddr-net datagram support
-- [ ] go-libp2p-transport datagram support
+- [x] go-multiaddr-net
+- [ ] go-libp2p-transport
 - [ ] go-udp-transport
-- [ ] go-peerstream datagram support
-- [ ] go-libp2p-swarm datagram support
+- [ ] go-libp2p-swarm
+- [ ] go-libp2p-packetswitch
+- [ ] go-libp2p-host
 - [ ] go-multigram
-- [ ] go-shs vs. go-dtls vs. go-cryptoauth
-- [ ] label-based switch
-- [ ] overlay routing interfaces
-
-
-## PR
-
-This PR adds APIs for message-based communication
+- [ ] go-wireguard

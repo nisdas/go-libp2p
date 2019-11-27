@@ -1,0 +1,52 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "interface.go",
+        "mock.go",
+        "mock_conn.go",
+        "mock_link.go",
+        "mock_net.go",
+        "mock_peernet.go",
+        "mock_printer.go",
+        "mock_stream.go",
+        "ratelimiter.go",
+    ],
+    importpath = "github.com/libp2p/go-libp2p/p2p/net/mock",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//p2p/host/basic:go_default_library",
+        "@com_github_ipfs_go_log//:go_default_library",
+        "@com_github_jbenet_goprocess//:go_default_library",
+        "@com_github_jbenet_goprocess//context:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//crypto:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//network:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peerstore:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//protocol:go_default_library",
+        "@com_github_libp2p_go_libp2p_netutil//:go_default_library",
+        "@com_github_libp2p_go_libp2p_peerstore//pstoremem:go_default_library",
+        "@com_github_multiformats_go_multiaddr//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "mock_notif_test.go",
+        "mock_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "@com_github_ipfs_go_detect_race//:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//helpers:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//network:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//protocol:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//test:go_default_library",
+        "@com_github_libp2p_go_libp2p_testing//net:go_default_library",
+        "@com_github_multiformats_go_multiaddr//:go_default_library",
+    ],
+)

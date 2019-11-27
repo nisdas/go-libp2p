@@ -105,6 +105,14 @@ func Muxer(name string, tpt interface{}) Option {
 	}
 }
 
+// PeerLimit sets the maximum number of peers that can be connected to at once.
+func PeerLimit(limit int) Option {
+	return func(cfg *Config) error {
+		cfg.PeerLimit = limit
+		return nil
+	}
+}
+
 // Transport configures libp2p to use the given transport (or transport
 // constructor).
 //

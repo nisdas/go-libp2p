@@ -1,0 +1,53 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+prefix = "github.com/libp2p/go-libp2p"
+
+# gazelle:prefix github.com/libp2p/go-libp2p
+gazelle(
+    name = "gazelle",
+    prefix = prefix,
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "defaults.go",
+        "error_util.go",
+        "libp2p.go",
+        "options.go",
+    ],
+    importpath = "github.com/libp2p/go-libp2p",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//config:go_default_library",
+        "//p2p/host/basic:go_default_library",
+        "@com_github_libp2p_go_libp2p_circuit//:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//connmgr:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//crypto:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//metrics:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peerstore:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//pnet:go_default_library",
+        "@com_github_libp2p_go_libp2p_mplex//:go_default_library",
+        "@com_github_libp2p_go_libp2p_peerstore//pstoremem:go_default_library",
+        "@com_github_libp2p_go_libp2p_secio//:go_default_library",
+        "@com_github_libp2p_go_libp2p_yamux//:go_default_library",
+        "@com_github_libp2p_go_maddr_filter//:go_default_library",
+        "@com_github_libp2p_go_tcp_transport//:go_default_library",
+        "@com_github_libp2p_go_ws_transport//:go_default_library",
+        "@com_github_multiformats_go_multiaddr//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["libp2p_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "@com_github_libp2p_go_libp2p_core//crypto:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_tcp_transport//:go_default_library",
+    ],
+)

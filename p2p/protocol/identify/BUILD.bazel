@@ -1,0 +1,55 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "id.go",
+        "id_delta.go",
+        "id_push.go",
+        "obsaddr.go",
+        "opts.go",
+    ],
+    importpath = "github.com/libp2p/go-libp2p/p2p/protocol/identify",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//p2p/protocol/identify/pb:go_default_library",
+        "@com_github_gogo_protobuf//io:go_default_library",
+        "@com_github_ipfs_go_log//:go_default_library",
+        "@com_github_libp2p_go_eventbus//:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//crypto:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//event:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//helpers:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//network:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peerstore:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//protocol:go_default_library",
+        "@com_github_multiformats_go_multiaddr//:go_default_library",
+        "@com_github_multiformats_go_multistream//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "id_test.go",
+        "obsaddr_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//:go_default_library",
+        "@com_github_ipfs_go_detect_race//:go_default_library",
+        "@com_github_libp2p_go_eventbus//:go_default_library",
+        "@com_github_libp2p_go_libp2p_blankhost//:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//crypto:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//event:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//helpers:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//network:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peerstore:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//protocol:go_default_library",
+        "@com_github_libp2p_go_libp2p_swarm//testing:go_default_library",
+        "@com_github_multiformats_go_multiaddr//:go_default_library",
+    ],
+)

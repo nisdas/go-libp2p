@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["ping.go"],
+    importpath = "github.com/libp2p/go-libp2p/p2p/protocol/ping",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_ipfs_go_ipfs_util//:go_default_library",
+        "@com_github_ipfs_go_log//:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//network:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["ping_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//p2p/host/basic:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_swarm//testing:go_default_library",
+    ],
+)

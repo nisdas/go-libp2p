@@ -1,0 +1,60 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "config.go",
+        "constructor_types.go",
+        "muxer.go",
+        "reflection_magic.go",
+        "security.go",
+        "transport.go",
+    ],
+    importpath = "github.com/libp2p/go-libp2p/config",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//p2p/host/basic:go_default_library",
+        "//p2p/host/relay:go_default_library",
+        "//p2p/host/routed:go_default_library",
+        "@com_github_ipfs_go_log//:go_default_library",
+        "@com_github_libp2p_go_conn_security_multistream//:go_default_library",
+        "@com_github_libp2p_go_libp2p_circuit//:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//connmgr:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//crypto:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//metrics:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//mux:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//network:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peerstore:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//pnet:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//routing:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//sec:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//sec/insecure:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//transport:go_default_library",
+        "@com_github_libp2p_go_libp2p_discovery//:go_default_library",
+        "@com_github_libp2p_go_libp2p_swarm//:go_default_library",
+        "@com_github_libp2p_go_libp2p_transport_upgrader//:go_default_library",
+        "@com_github_libp2p_go_maddr_filter//:go_default_library",
+        "@com_github_libp2p_go_stream_muxer_multistream//:go_default_library",
+        "@com_github_multiformats_go_multiaddr//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "config_test.go",
+        "muxer_test.go",
+        "reflection_magic_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//p2p/host/basic:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//mux:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_swarm//testing:go_default_library",
+        "@com_github_libp2p_go_libp2p_yamux//:go_default_library",
+    ],
+)

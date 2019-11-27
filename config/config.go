@@ -75,6 +75,8 @@ type Config struct {
 
 	Routing RoutingC
 
+	PeerLimit int
+
 	EnableAutoRelay bool
 }
 
@@ -114,7 +116,7 @@ func (cfg *Config) NewNode(ctx context.Context) (host.Host, error) {
 	}
 
 	// TODO: Make the swarm implementation configurable.
-	swrm := swarm.NewSwarm(ctx, pid, cfg.Peerstore, cfg.Reporter)
+	swrm := swarm.NewSwarm(ctx, pid, cfg.Peerstore, cfg.Reporter, cfg.PeerLimit)
 	if cfg.Filters != nil {
 		swrm.Filters = cfg.Filters
 	}

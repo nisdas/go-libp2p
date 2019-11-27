@@ -1,0 +1,50 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "addrsplosion.go",
+        "autorelay.go",
+        "doc.go",
+        "log.go",
+        "relay.go",
+    ],
+    importpath = "github.com/libp2p/go-libp2p/p2p/host/relay",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//p2p/host/basic:go_default_library",
+        "@com_github_ipfs_go_log//:go_default_library",
+        "@com_github_libp2p_go_libp2p_autonat//:go_default_library",
+        "@com_github_libp2p_go_libp2p_circuit//:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//network:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//routing:go_default_library",
+        "@com_github_libp2p_go_libp2p_discovery//:go_default_library",
+        "@com_github_multiformats_go_multiaddr//:go_default_library",
+        "@com_github_multiformats_go_multiaddr_net//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "addrsplosion_test.go",
+        "autorelay_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//:go_default_library",
+        "@com_github_gogo_protobuf//io:go_default_library",
+        "@com_github_ipfs_go_cid//:go_default_library",
+        "@com_github_jbenet_go_cienv//:go_default_library",
+        "@com_github_libp2p_go_libp2p_autonat//:go_default_library",
+        "@com_github_libp2p_go_libp2p_autonat//pb:go_default_library",
+        "@com_github_libp2p_go_libp2p_circuit//:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//network:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//routing:go_default_library",
+        "@com_github_multiformats_go_multiaddr//:go_default_library",
+        "@com_github_multiformats_go_multiaddr_net//:go_default_library",
+    ],
+)

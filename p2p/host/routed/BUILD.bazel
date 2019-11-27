@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["routed.go"],
+    importpath = "github.com/libp2p/go-libp2p/p2p/host/routed",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_ipfs_go_log//:go_default_library",
+        "@com_github_libp2p_go_libp2p_circuit//:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//connmgr:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//event:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//host:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//network:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peer:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//peerstore:go_default_library",
+        "@com_github_libp2p_go_libp2p_core//protocol:go_default_library",
+        "@com_github_libp2p_go_libp2p_loggables//:go_default_library",
+        "@com_github_multiformats_go_multiaddr//:go_default_library",
+    ],
+)
